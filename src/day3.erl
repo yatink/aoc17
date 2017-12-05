@@ -1,5 +1,5 @@
 -module(day3).
--export([find_ring_and_offset/1, find_side/2, calc_steps/3, part1/1, spiral_iterator/4]).
+-export([find_ring_and_offset/1, find_side/2, calc_steps/3, part1/1, spiral_iterator/4, sum_at_point/2, aggregator/6, part2/1]).
 
 %Given a spiral of numbers like so
 %17  16  15  14  13
@@ -48,10 +48,32 @@ move({X,Y}, up) -> {X, Y+1};
 move({X,Y}, down) -> {X, Y-1}.
      
 
-spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset =:= Y-Y_offset, X-X_offset > 0 -> move({X,Y}, left);
-spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X - X_offset < 0 , -1 * (X - X_offset) =:= Y-Y_offset -> move({X,Y}, down);
-spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset =:= Y-Y_offset, X-X_offset < 0 -> move({X,Y}, right);
-spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset > 1, -1 * (X-X_offset) =:= Y-Y_offset - 1-> move({X,Y}, up);
-spiral_iterator({X,Y}, X_offset, Y_offset, Direction) -> move({X,Y}, Direction).
+spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset =:= 0, Y-Y_offset =:= 0 -> {move({X,Y}, Direction), Direction};
+spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset =:= Y-Y_offset, X-X_offset >= 0 -> {move({X,Y}, rotate90(Direction)), rotate90(Direction)};
+spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset =:= Y-Y_offset, X-X_offset < 0 -> {move({X,Y}, rotate90(Direction)), rotate90(Direction)};
+spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X - X_offset < 0 , -1 * (X - X_offset) =:= Y-Y_offset -> {move({X,Y}, rotate90(Direction)), rotate90(Direction)};
+spiral_iterator({X,Y}, X_offset, Y_offset, Direction) when X-X_offset >= 1, -1 * (X-X_offset) =:= Y-Y_offset - 1-> {move({X,Y}, rotate90(Direction)), rotate90(Direction)};
+spiral_iterator({X,Y}, _, _, Direction) -> {move({X,Y}, Direction), Direction}.
     
-    
+
+sum_at_point(Matrix, {X,Y}) ->
+    Deltas = [-1, 0, 1],
+    Coords = [{X+Dx, Y+Dy} || Dx <- Deltas, Dy <- Deltas,  Dx =/= 0 orelse Dy =/= 0 ],
+    Neighbours = lists:map(fun({_X,_Y}) -> array2D:get(_X, _Y, Matrix) end, Coords),
+    lists:sum(lists:filter(fun(Val) -> Val =/= undefined end, Neighbours)).
+				       
+
+aggregator(Threshold, Matrix, Point, Direction, X_offset, Y_offset) ->
+    Sum = sum_at_point(Matrix, Point),
+    case Sum of
+	    Sum when Sum > Threshold ->
+			Sum;
+	    _  ->
+			{{X,Y}, Dir} = spiral_iterator(Point, X_offset, Y_offset, Direction),
+			M = array2D:set(X,Y, Matrix, Sum),
+			aggregator(Threshold, M, {X,Y}, Dir, X_offset, Y_offset)
+	end.
+	
+part2(Threshold) ->
+    Blank = array2D:new(200, 200),
+    aggregator(Threshold, array2D:set(100, 100, Blank, 1), {1,0}, right, 100, 100). 
