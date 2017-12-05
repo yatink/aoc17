@@ -64,16 +64,18 @@ sum_at_point(Matrix, {X,Y}) ->
 				       
 
 aggregator(Threshold, Matrix, Point, Direction, X_offset, Y_offset) ->
-    Sum = sum_at_point(Matrix, Point),
+    {{X,Y}, Dir} = spiral_iterator(Point, X_offset, Y_offset, Direction),
+    Sum = sum_at_point(Matrix, {X,Y}),
+    erlang:display({Point, Direction}),
+    erlang:display(Sum),
     case Sum of
-	    Sum when Sum > Threshold ->
-			Sum;
-	    _  ->
-			{{X,Y}, Dir} = spiral_iterator(Point, X_offset, Y_offset, Direction),
-			M = array2D:set(X,Y, Matrix, Sum),
-			aggregator(Threshold, M, {X,Y}, Dir, X_offset, Y_offset)
+	Sum when Sum > Threshold ->
+	    Sum;
+	_  ->
+	    M = array2D:set(X,Y, Matrix, Sum),
+	    aggregator(Threshold, M, {X,Y}, Dir, X_offset, Y_offset)
 	end.
 	
 part2(Threshold) ->
-    Blank = array2D:new(200, 200),
-    aggregator(Threshold, array2D:set(100, 100, Blank, 1), {1,0}, right, 100, 100). 
+    Blank = array2D:new(),
+    aggregator(Threshold, array2D:set(500, 500, Blank, 1), {500,500}, right, 500, 500). 
