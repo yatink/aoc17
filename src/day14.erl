@@ -1,5 +1,5 @@
 -module(day14).
--export([number_of_ones/1, part1/1, generate_defrag_pattern/1, knot_hashify_decimal/2, count_regions/4, discover_region/3]).
+-export([number_of_ones/1, part1/1, generate_defrag_pattern/1, knot_hashify_decimal/2, count_regions/6, part2/1, flood_fill_region/5, pad_list/4]).
 
 number_of_ones(Input) ->
     number_of_ones(Input, 0).
@@ -13,6 +13,8 @@ knot_hashify_decimal(Input, Row) ->
     HexRep = day10:part2(InputString),
     list_to_integer(HexRep, 16).
     
+pad_list(List, PadElem, Length, TargetLength) when Length < TargetLength -> pad_list([PadElem | List], PadElem, Length + 1, TargetLength);
+pad_list(List, _, _, _) -> List.
 
 part1(Input) ->
     lists:foldl(
@@ -21,39 +23,47 @@ part1(Input) ->
     
 			        
 generate_defrag_pattern(Input) ->
-    {Pattern, _} = lists:foldl(
-		     fun(Row, {Matrix, Count}) ->
-			     {array:set(
-				Count, 
-				array:from_list(integer_to_list(knot_hashify_decimal(Input, Row), 2)),
-				Matrix), Count + 1}
-		     end, {array:new(), 0}, lists:seq(0, 127)),
-    Pattern.
+    lists:foldl(
+      fun(Row, Matrix) ->
+              BinaryRep = integer_to_list(knot_hashify_decimal(Input, Row), 2),
+              PaddedList = pad_list(BinaryRep, $0, length(BinaryRep), 128),
+              %% erlang:display({PaddedList, length(PaddedList)}),
+              array:set(Row, array:from_list(PaddedList), Matrix)
+      end,
+      array:new(),
+      lists:seq(0, 127)).
 		   
 
-count_regions(DFPattern, XCoord, YCoord, RegionCount) when XCoord > 127->
-    count_regions(DFPattern, 0, YCoord + 1, RegionCount);
-count_regions(_, _, YCoord, RegionCount) when YCoord > 127 ->
+count_regions(DFPattern, XCoord, YCoord, RegionCount, PositiveValue, NegativeValue) when XCoord > 127->
+    count_regions(DFPattern, 0, YCoord + 1, RegionCount, PositiveValue, NegativeValue);
+count_regions(_, _, YCoord, RegionCount, _, _) when YCoord > 127 ->
     RegionCount;
-count_regions(DFPattern, XCoord, YCoord, RegionCount) ->
+count_regions(DFPattern, XCoord, YCoord, RegionCount, PositiveValue, NegativeValue) ->
     case array2D:get(XCoord, YCoord, DFPattern) of
-	$0 -> count_regions(DFPattern, XCoord + 1, YCoord, RegionCount);
-	$1 -> count_regions(discover_region(DFPattern, XCoord, YCoord), XCoord + 1, YCoord, RegionCount + 1);
-	_ -> count_regions(DFPattern, XCoord + 1, YCoord, RegionCount)
+	PositiveValue -> 
+            %% erlang:display({XCoord, YCoord, RegionCount}),
+            UpdatedPattern = flood_fill_region(DFPattern, XCoord, YCoord, PositiveValue, NegativeValue),
+            count_regions(UpdatedPattern, XCoord + 1, YCoord, RegionCount + 1, PositiveValue, NegativeValue);
+	_ -> count_regions(DFPattern, XCoord + 1, YCoord, RegionCount, PositiveValue, NegativeValue)
     end.
 	     
 
-discover_region(DFPattern, XCoord, YCoord) ->
-    Deltas = [0, +1, -1],
-    Region = case array2D:get(XCoord, YCoord, DFPattern) of		 
-	$1 -> [{XCoord, YCoord} | [discover_region(DFPattern, XCoord + XDel, YCoord + YDel) || 
-				      XDel <- Deltas, 
-				      YDel <- Deltas, 
-				      abs(XDel + YDel) =:= 1 ]
-	      ];
-	_ -> none
-    end,
-    lists:foldl(
-      fun({X, Y}, Matrix) -> array2D:set(X, Y, $0, Matrix) end,
-      DFPattern, 
-      lists:filter(fun(X) -> X=/= none end, Region)).
+flood_fill_region(DFPattern, XCoord, YCoord, PositiveValue, NegativeValue) ->
+    case array2D:get(XCoord, YCoord, DFPattern) of
+        PositiveValue ->
+            %% erlang:display({XCoord, YCoord, PositiveValue}),
+            Deltas = [0, 1, -1],
+            Coords = [{XCoord + XDel, YCoord + YDel} || XDel <- Deltas, YDel <- Deltas, XCoord + XDel >= 0, YCoord + YDel >= 0, abs(XDel + YDel) =:= 1],
+            ResetNeighbours = lists:foldl(
+                                fun({X,Y}, M) -> flood_fill_region(M, X, Y, PositiveValue, NegativeValue) end,
+                                array2D:set(XCoord, YCoord, DFPattern, NegativeValue), 
+                                Coords),
+            ResetNeighbours;
+        _ ->
+            %% erlang:display({XCoord, YCoord, done}),
+            DFPattern
+    end.
+
+part2(Input) ->
+    DFPattern = generate_defrag_pattern(Input),
+    count_regions(DFPattern, 0, 0, 0, $1, $0).

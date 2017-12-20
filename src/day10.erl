@@ -40,8 +40,14 @@ part2(Input) ->
     Seed = [17, 31, 73, 47, 23],
     {JumbledBaseList, _, _} = funky_hash(duplicate_list(Input ++ Seed, 64), lists:seq(0, 255)),
     KHValues = batchwise_xor(JumbledBaseList),
-    HexRep = lists:map(fun(X) -> integer_to_list(X,16) end, KHValues),
-    erlang:display(HexRep),
+    HexRep = lists:map(
+               fun(X) -> 
+                       case integer_to_list(X,16) of
+                           [A | []] -> [$0, A];
+                           A2 -> A2
+                       end
+               end, KHValues),
+    %% erlang:display(HexRep),
     string:join(lists:reverse(HexRep), "").
 
     
