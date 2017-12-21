@@ -1,5 +1,5 @@
 -module(day16).
--export([interpret_step/2, part1/2, part2/4, apply_mapping/3, part2_slow/2]).
+-export([interpret_step/2, part1/2, part2/4, apply_mapping/3, part2_cycle_detection/2]).
 
 interpret_step(Step, ProgSequence) ->
     case Step of
@@ -54,6 +54,13 @@ part2(Steps, InitialSequence, X, Y) ->
     erlang:display(RepeatedMapping),
     gen_sequence_from_mapping(RepeatedMapping).
                         
-part2_slow(Steps, InitialSequence) ->
-    lists:foldl(fun(_, Sequence) -> part1(Steps, Sequence) end, InitialSequence, lists:seq(1, 1000000000)).
-                        
+part2_cycle_detection(Steps, InitialSequence) ->
+    lists:foldl(
+      fun(Iter, {Sequence, Sequences, Inv}) -> 
+              NewSeq = part1(Steps, Sequence),
+              erlang:display({Iter, maps:get(NewSeq, Sequences, [])}),
+              {NewSeq, maps:put(NewSeq, [Iter|maps:get(NewSeq, Sequences, [])], Sequences), maps:put(Iter, NewSeq, Inv)}
+      end, 
+      {InitialSequence, maps:new(), maps:new()}, lists:seq(1, 100)).
+    
+
