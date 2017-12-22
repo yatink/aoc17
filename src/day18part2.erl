@@ -7,11 +7,11 @@ add(Register, Value, Registers, _) -> {maps:put(Register, Value + maps:get(Regis
 mul(Register, Value, Registers, _) -> {maps:put(Register, Value * maps:get(Register, Registers, 0), Registers), 1}.
 mod(Register, Value, Registers, _) -> {maps:put(Register, maps:get(Register, Registers, 0) rem Value, Registers), 1}.
 snd(Value, Registers) -> 
-    maps:get(supervisor, Registers) ! {snd_request, day18:get_integer_or_register(Value, Registers), maps:get("p", Registers)},
+    maps:get(supervisor, Registers) ! {snd_request, day18:get_integer_or_register(Value, Registers)},
     {Registers, 1}.
-rcv(Register, Registers) -> 
+rcv(_, Registers) -> 
     maps:get(supervisor, Registers) ! {rcv_request, maps:get("p", Registers)},
-    {Register, wait}.
+    wait.
 jgz(Check, Offset, Registers) ->
     case day18:get_integer_or_register(Check, Registers) of
         0 -> {Registers, 1};
