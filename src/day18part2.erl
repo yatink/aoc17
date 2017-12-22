@@ -10,7 +10,7 @@ snd(Value, Registers) ->
     maps:get(supervisor, Registers) ! {snd_request, day18:get_integer_or_register(Value, Registers), maps:get("p", Registers)},
     {Registers, 1}.
 rcv(Register, Registers) -> 
-    maps:get(supervisor, Registers) ! {rcv_request, Register},
+    maps:get(supervisor, Registers) ! {rcv_request, maps:get("p", Registers)},
     {Register, wait}.
 jgz(Check, Offset, Registers) ->
     case day18:get_integer_or_register(Check, Registers) of
